@@ -4,7 +4,7 @@
 //  Description    : This is the implementaiton file for the spwgen443 password
 //                   generator program.  See assignment details.
 //
-//  Collaborators  : **TODO**: FILL ME IN
+//  Collaborators  : James Frazier, Sahil Mishra, Danilem Colom, James Cunningham
 //  Last Modified  : **TODO**: FILL ME IN
 //
 
@@ -19,9 +19,9 @@ import (
 	"strconv"
 	"time"
 	"github.com/pborman/getopt"
-	//"strings"
 	"regexp"
 	"bufio"
+	"os/exec"
 	// There will likely be several mode APIs you need
 )
 
@@ -47,6 +47,38 @@ var patternval string = `pattern (set of symbols defining password)
 // Functions
 
 // Up to you to decide which functions you want to add
+func myOwnRNG() int64 {
+	var rnd int64 = 0
+	cmd := "od"
+
+	args := []string{"-An", "-N8", "-td8", "/dev/urandom"}
+
+	if urandom, err := exec.Command(cmd, args...).Output(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(-1)
+	} else {
+		r := regexp.MustCompile("^[0-9-]+$").MatchString
+		urandomStart := -1
+		urandomEnd := 20
+		j := 0
+		for urandomStart == -1 && j < len(urandom) {
+			if r(string(urandom[j])) {
+					urandomStart = j
+			}
+			j = j + 1
+		}
+
+		if ranInt, err := strconv.Atoi(string(urandom[urandomStart:urandomEnd + 1])); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(-1)
+		} else {
+			rnd = int64(ranInt)
+		}
+	}
+
+	return rnd
+}
+
 func getDicWord(reqLen int) string {
 	var words []string
 
@@ -159,7 +191,7 @@ func generatePasword(length int8, pattern string, webflag bool) string {
 				} else {
 					fmt.Printf("Start: %d End: %d For %s\n", reqLenStart, reqLenEnd, string(pattern[reqLenStart:reqLenEnd + 1]))
 					if reqLen, err := strconv.Atoi(string(pattern[reqLenStart:reqLenEnd + 1])); err != nil {
-						fmt.Printf("Could not cast length of word as int")
+						fmt.Printf("Could not cast length of word as int\n")
 						fmt.Fprintln(os.Stderr, err)
 						os.Exit(-1)
 					} else {
@@ -169,11 +201,16 @@ func generatePasword(length int8, pattern string, webflag bool) string {
 			case "s": // Append random special char to password
 				pwd = pwd + specials[rand.Intn(len(specials))]
 			default: // Cases above are guaranteed; exit if they somehow don't happen
-				fmt.Printf("Unknown character found in pattern")
+				fmt.Printf("Unknown character found in pattern\n")
 				os.Exit(-1)
 			}
 		}
+		if len(pwd) >= 65 {
+			fmt.Printf("Pattern too long.  The maximum length of a password is 64 characters.\n")
+			os.Exit(-1)
+		}
 	}
+
 	// Now return the password
 	return pwd
 }
@@ -188,11 +225,10 @@ func generatePasword(length int8, pattern string, webflag bool) string {
 
 func main() {
 
-	// Setup options for the program content
-	rand.Seed(time.Now().UTC().UnixNano())
 	helpflag := getopt.Bool('h', "", "help (this menu)")
 	webflag := getopt.Bool('w', "", "web flag (no symbol characters, e.g., no &*...)")
 	length := getopt.String('l', "", "length of password (in characters)")
+	seed := getopt.String('s', "", "choose seed (0 for time, 1 for /dev/urandom)")
 	pattern := getopt.String('p', "", patternval)
 
 	// Now parse the command line arguments
@@ -208,8 +244,27 @@ func main() {
 	fmt.Printf("helpflag [%t]\n", *helpflag)
 	fmt.Printf("webflag [%t]\n", *webflag)
 	fmt.Printf("length [%s]\n", *length)
+	fmt.Printf("seed [%s]\n", *seed)
 	fmt.Printf("pattern [%s]\n", *pattern)
 	// Normally, we we use getopt.Arg{#) to get the non-flag paramters
+
+	if *helpflag == true {
+		getopt.Usage()
+		os.Exit(-1)
+	}
+
+	// Setup options for the program content
+	switch *seed {
+	case "0":
+		fmt.Printf("Using time for seed\n")
+		rand.Seed(time.Now().UTC().UnixNano())
+	case "1":
+		fmt.Printf("Using urandom\n")
+		rand.Seed(myOwnRNG())
+	default:
+		fmt.Printf("Using time for seed.\n")
+		rand.Seed(time.Now().UTC().UnixNano())
+	}
 
 	// Safety check length parameter
 	// If no length is given, 16 characters should be assumed
