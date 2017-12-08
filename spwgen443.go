@@ -252,12 +252,14 @@ func main() {
 		// Handle error
 		fmt.Fprintln(os.Stderr, err)
 		getopt.Usage()
+		fmt.Printf("-h help (this menu)\n-w web flag (no symbol characters, e.g., no &*...)\n-r use /dev/urandom as seed for RNG\n")
 		os.Exit(-1)
 	}
 
 	// Show help menu if flaf is shown
 	if *helpflag == true {
 		getopt.Usage()
+		fmt.Printf("-h help (this menu)\n-w web flag (no symbol characters, e.g., no &*...)\n-r use /dev/urandom as seed for RNG\n")
 		os.Exit(-1)
 	}
 
