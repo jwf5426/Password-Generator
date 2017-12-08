@@ -4,8 +4,8 @@
 //  Description    : This is the implementaiton file for the spwgen443 password
 //                   generator program.  See assignment details.
 //
-//  Collaborators  : James Frazier, Sahil Mishra, Danilem Colom, James Cunningham
-//  Last Modified  : **TODO**: FILL ME IN
+//  Collaborators  : James Frazier, Sahil Mishra, Daniel Colom, James Cunningham
+//  Last Modified  : December 7, 2017 right before the deadline
 //
 
 // Package statement
@@ -22,7 +22,6 @@ import (
 	"regexp"
 	"bufio"
 	"os/exec"
-	// There will likely be several mode APIs you need
 )
 
 // Global data
@@ -41,22 +40,27 @@ var patternval string = `pattern (set of symbols defining password)
 
         Note: the pattern overrides other flags, e.g., -w`
 
-// You may want to create more global variables
-
+////////////////////////////////////////////////////////////////////////////////
 //
-// Functions
+// Function     : myOwnRNG
+// Description  : This is the function that generates a random
+//							: int64 variable using /dev/urandom.  The results
+//						 	: are used to seed math/rand.
+//
+// Inputs       : none
+// Outputs      : int64 random number
 
-// Up to you to decide which functions you want to add
 func myOwnRNG() int64 {
 	var rnd int64 = 0
+
+	// Read random bytes from kernal /dev/urandom
 	cmd := "od"
-
 	args := []string{"-An", "-N8", "-td8", "/dev/urandom"}
-
 	if urandom, err := exec.Command(cmd, args...).Output(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
 	} else {
+		// Extract bytes from the results of reading /dev/urandom
 		r := regexp.MustCompile("^[0-9-]+$").MatchString
 		urandomStart := -1
 		urandomEnd := 20
@@ -67,7 +71,7 @@ func myOwnRNG() int64 {
 			}
 			j = j + 1
 		}
-
+		// Converts result bytes from /dev/urandom to string and then int64
 		if ranInt, err := strconv.Atoi(string(urandom[urandomStart:urandomEnd + 1])); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(-1)
@@ -76,28 +80,38 @@ func myOwnRNG() int64 {
 		}
 	}
 
+	// Return int64 to seed math/rand
 	return rnd
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : getDicWord
+// Description  : This is a function that reads the kernal's
+//							: dictionary, and returns a word.
+//
+// Inputs       : reqLen: the requested length a dictionary word, can be blank
+// Outputs      : string of word found in dictionary
 
 func getDicWord(reqLen int) string {
 	var words []string
 
+	// Open kernal's dictionary
 	if dict, err := os.Open("/usr/share/dict/words"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
 	} else {
 		defer dict.Close()
-
+		// Scan dictionary for words with only [a-zA-z]
 		scanner := bufio.NewScanner(dict)
 		r := regexp.MustCompile("^[a-zA-Z]+$").MatchString
-
 		for scanner.Scan() {
 			switch reqLen {
-			case -1:
+			case -1: // If no specific length requested for word, append all words in dictionary
 				if r(scanner.Text()) {
 					words = append(words,scanner.Text())
 				}
-			default:
+			default: // If specific length is requested, append words from dictionary only with that length
 				if r(scanner.Text()) && len(scanner.Text()) == reqLen {
 					words = append(words,scanner.Text())
 				}
@@ -105,10 +119,13 @@ func getDicWord(reqLen int) string {
 		}
 	}
 
+	// If requested length returns no words from dictionary, throw error
 	if len(words) == 0 {
 		fmt.Printf("No words in dictionary with length of %d\n", reqLen)
 		os.Exit(-1)
 	}
+
+	// Return random word from words collected from dictionary
 	return words[rand.Intn(len(words))]
 }
 
@@ -123,7 +140,6 @@ func getDicWord(reqLen int) string {
 // Outputs      : 0 if successful test, -1 if failure
 
 func generatePasword(length int8, pattern string, webflag bool) string {
-
 	pwd := "" // Start with nothing and add code
 	digits := []string{"0","1","2","3","4","5","6","7","8","9"}
 	chars := []string{"a","A","b","B","c","C","d","D","e","E","f","F","g","G","h","H","i","I","j","J","k","K","l","L","m","M","n","N","o","O","p","P","q","Q","r","R","s","S","t","T","u","U","v","V","w","W","x","X","y","Y","z","Z"}
@@ -138,9 +154,9 @@ func generatePasword(length int8, pattern string, webflag bool) string {
 		var pr int
 
 		switch webflag {
-		case true:
+		case true: // If webflag is true, do digit Pr(0.5) and character Pr(0.5)
 			pr = 2
-		case false:
+		case false: // Else do Pr(0.33) for all of them
 			pr = 3
 		default:
 			fmt.Printf("Error reading webflag\n")
@@ -172,7 +188,7 @@ func generatePasword(length int8, pattern string, webflag bool) string {
 				pwd = pwd + lowerChars[rand.Intn(len(lowerChars))]
 			case "u": // Append random uppercase char to password
 				pwd = pwd + upperChars[rand.Intn(len(upperChars))]
-			case "w":
+			case "w": // Append random word from dictionary based off
 				r := regexp.MustCompile("^[0-9]+$").MatchString
 				reqLenStart := i + 1
 				reqLenEnd := -1
@@ -189,7 +205,7 @@ func generatePasword(length int8, pattern string, webflag bool) string {
 				if reqLenEnd == -1 {
 					pwd = pwd + getDicWord(-1)
 				} else {
-					fmt.Printf("Start: %d End: %d For %s\n", reqLenStart, reqLenEnd, string(pattern[reqLenStart:reqLenEnd + 1]))
+					// fmt.Printf("Start: %d End: %d For %s\n", reqLenStart, reqLenEnd, string(pattern[reqLenStart:reqLenEnd + 1]))
 					if reqLen, err := strconv.Atoi(string(pattern[reqLenStart:reqLenEnd + 1])); err != nil {
 						fmt.Printf("Could not cast length of word as int\n")
 						fmt.Fprintln(os.Stderr, err)
@@ -239,16 +255,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	/*
-	// Get the flags
-	fmt.Printf("helpflag [%t]\n", *helpflag)
-	fmt.Printf("webflag [%t]\n", *webflag)
-	fmt.Printf("length [%s]\n", *length)
-	fmt.Printf("seed [%s]\n", *seed)
-	fmt.Printf("pattern [%s]\n", *pattern)
-	// Normally, we we use getopt.Arg{#) to get the non-flag paramters
-	*/
-
+	// Show help menu if flaf is shown
 	if *helpflag == true {
 		getopt.Usage()
 		os.Exit(-1)
