@@ -223,14 +223,13 @@ func generatePasword(length int8, pattern string, webflag bool) string {
 // Inputs       : none
 // Outputs      : 0 if successful test, -1 if failure
 
+var helpflag = getopt.Bool('h', "", "help (this menu)")
+var webflag = getopt.Bool('w', "", "web flag (no symbol characters, e.g., no &*...)")
+var length = getopt.String('l', "", "length of password (in characters)")
+var rng = getopt.Bool('r', "", "use /dev/urandom as seed for RNG")
+var pattern = getopt.String('p', "", patternval)
+
 func main() {
-
-	helpflag := getopt.Bool('h', "", "help (this menu)")
-	webflag := getopt.Bool('w', "", "web flag (no symbol characters, e.g., no &*...)")
-	length := getopt.String('l', "", "length of password (in characters)")
-	seed := getopt.String('s', "", "choose seed (0 for time, 1 for /dev/urandom)")
-	pattern := getopt.String('p', "", patternval)
-
 	// Now parse the command line arguments
 	err := getopt.Getopt(nil)
 	if err != nil {
@@ -240,6 +239,7 @@ func main() {
 		os.Exit(-1)
 	}
 
+	/*
 	// Get the flags
 	fmt.Printf("helpflag [%t]\n", *helpflag)
 	fmt.Printf("webflag [%t]\n", *webflag)
@@ -247,6 +247,7 @@ func main() {
 	fmt.Printf("seed [%s]\n", *seed)
 	fmt.Printf("pattern [%s]\n", *pattern)
 	// Normally, we we use getopt.Arg{#) to get the non-flag paramters
+	*/
 
 	if *helpflag == true {
 		getopt.Usage()
@@ -254,15 +255,10 @@ func main() {
 	}
 
 	// Setup options for the program content
-	switch *seed {
-	case "0":
-		fmt.Printf("Using time for seed\n")
-		rand.Seed(time.Now().UTC().UnixNano())
-	case "1":
-		fmt.Printf("Using urandom\n")
+	switch *rng {
+	case true:
 		rand.Seed(myOwnRNG())
 	default:
-		fmt.Printf("Using time for seed.\n")
 		rand.Seed(time.Now().UTC().UnixNano())
 	}
 
